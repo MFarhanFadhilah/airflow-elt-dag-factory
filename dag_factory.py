@@ -34,8 +34,7 @@ def create_dag(config: dict) -> DAG:
         dag_id=config["job_name"],
         start_date=datetime(2023, 1, 1),
         schedule_interval=config["schedule"],
-        catchup=False,
-        tags=["gsheet", "elt"],
+        catchup=False
     ) as dag:
         
         gsheet_to_bq = GSheetToBQOperator(
