@@ -39,7 +39,7 @@ class GSheetToBQOperator(BaseOperator):
     def _sanitize(self, name):
         name = re.sub(r"[^a-zA-Z0-9_]", "_", str(name))
         return re.sub(r"_+", "_", name).strip("_").lower() or "col"
-
+    
     def execute(self, context):
         sheets = GSheetsHook(self.gcp_conn_id)
         gcs = GCSHook(self.gcp_conn_id)
@@ -62,16 +62,19 @@ class GSheetToBQOperator(BaseOperator):
             padded = r + [""] * (len(headers) - len(r))
             rows.append([str(v).replace("\n", " ").strip() for v in padded])
 
+        object_name = f"{self.gcs_folder}/{context['ds_nodash']}.csv"
+
+        # Upload to GCS
         with NamedTemporaryFile("w+", newline="", encoding="utf-8") as tmp:
             writer = csv.writer(tmp, delimiter=self.delimiter)
             writer.writerows(rows)
             tmp.flush()
 
-            object_name = f"{self.gcs_folder}/{context['ds_nodash']}.csv"
             gcs.upload(self.gcs_bucket, object_name, tmp.name)
 
+        # Load to BigQuery
         schema = [bigquery.SchemaField(c, "STRING") for c in headers]
-        bq.load_table_from_uri(
+        load_job = bq.load_table_from_uri(
             f"gs://{self.gcs_bucket}/{object_name}",
             f"{self.project_id}.{self.bq_dataset}.{self.bq_table}",
             job_config=bigquery.LoadJobConfig(
@@ -82,4 +85,8 @@ class GSheetToBQOperator(BaseOperator):
                 write_disposition="WRITE_TRUNCATE",
                 allow_jagged_rows=True,
             ),
-        ).result()
+        )
+        load_job.result()
+
+        # 3. Cleanup GCS object (ONLY after success)
+        gcs.delete(self.gcs_bucket, object_name)

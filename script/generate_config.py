@@ -4,18 +4,10 @@ import gspread
 from pathlib import Path
 from google.oauth2.service_account import Credentials
 
-
-# ---------------------------------------------------------------------
-# Project paths
-# ---------------------------------------------------------------------
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 KEY_DIR = PROJECT_DIR / "key"
 DAG_CONFIG_DIR = PROJECT_DIR / "dag_config"
 
-
-# ---------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------
 def parse_csv(val):
     return [v.strip() for v in val.split(",")] if val else []
 
@@ -30,24 +22,16 @@ def get_service_account_file() -> Path:
 
     return key_files[0]
 
-
-# ---------------------------------------------------------------------
-# Core logic
-# ---------------------------------------------------------------------
 def generate_yaml(project_id: str, gsheet_id: str, job_name: str):
     creds = Credentials.from_service_account_file(
         get_service_account_file(),
         scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
     )
-
     client = gspread.authorize(creds)
     sheet = client.open_by_key(gsheet_id).worksheet("pipeline_control")
-
     rows = sheet.get_all_records()
 
-    # -----------------------------------------------------------------
     # Find target job
-    # -----------------------------------------------------------------
     matched = [r for r in rows if r.get("job_name") == job_name]
 
     if not matched:
@@ -64,9 +48,7 @@ def generate_yaml(project_id: str, gsheet_id: str, job_name: str):
 
     DAG_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
-    # -----------------------------------------------------------------
     # Build YAML config
-    # -----------------------------------------------------------------
     config = {
         "project_id": project_id,
         "job_name": row["job_name"],
@@ -98,10 +80,7 @@ def generate_yaml(project_id: str, gsheet_id: str, job_name: str):
 
     print(f"YAML generated successfully: {output_file}")
 
-
-# ---------------------------------------------------------------------
 # CLI entrypoint
-# ---------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser(
         description="Generate Airflow DAG YAML from Google Sheets control plane"
