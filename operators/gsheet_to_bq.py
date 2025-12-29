@@ -1,11 +1,12 @@
 import re
 import csv
+from google.cloud import bigquery
 from tempfile import NamedTemporaryFile
-from airflow.models.baseoperator import BaseOperator
 from airflow.exceptions import AirflowException
+from airflow.models.baseoperator import BaseOperator
 from airflow.providers.google.suite.hooks.sheets import GSheetsHook
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
-from google.cloud import bigquery
+from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 
 
 class GSheetToBQOperator(BaseOperator):
@@ -22,7 +23,9 @@ class GSheetToBQOperator(BaseOperator):
         bq_dataset,
         bq_table,
         delimiter="|",
-        gcp_conn_id="google_cloud_default",
+        sheets_conn_id="google_sheets_sa",
+        gcs_conn_id="google_cloud_default",
+        bq_conn_id="google_cloud_default",
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -34,20 +37,26 @@ class GSheetToBQOperator(BaseOperator):
         self.bq_dataset = bq_dataset
         self.bq_table = bq_table
         self.delimiter = delimiter
-        self.gcp_conn_id = gcp_conn_id
+        self.sheets_conn_id = sheets_conn_id
+        self.gcs_conn_id = gcs_conn_id
+        self.bq_conn_id = bq_conn_id
 
     def _sanitize(self, name):
         name = re.sub(r"[^a-zA-Z0-9_]", "_", str(name))
         return re.sub(r"_+", "_", name).strip("_").lower() or "col"
-    
-    def execute(self, context):
-        sheets = GSheetsHook(self.gcp_conn_id)
-        gcs = GCSHook(self.gcp_conn_id)
-        bq = bigquery.Client(project=self.project_id)
 
+    def execute(self, context):
+        sheets = GSheetsHook(gcp_conn_id=self.sheets_conn_id)
+        gcs = GCSHook(gcp_conn_id=self.gcs_conn_id)
+        bq = BigQueryHook(
+            gcp_conn_id=self.bq_conn_id,
+            use_legacy_sql=False,
+        ).get_client(project_id=self.project_id)
+
+        self.log.info("Reading Google Sheet %s", self.gsheet_id)
         data = sheets.get_values(self.gsheet_id, self.range)
         if not data:
-            raise AirflowException("No data found in sheet")
+            raise AirflowException("No data found in Google Sheet")
 
         raw_headers, body = data[0], data[1:]
 
@@ -64,16 +73,15 @@ class GSheetToBQOperator(BaseOperator):
 
         object_name = f"{self.gcs_folder}/{context['ds_nodash']}.csv"
 
-        # Upload to GCS
+        self.log.info("Uploading CSV to gs://%s/%s", self.gcs_bucket, object_name)
         with NamedTemporaryFile("w+", newline="", encoding="utf-8") as tmp:
             writer = csv.writer(tmp, delimiter=self.delimiter)
             writer.writerows(rows)
             tmp.flush()
-
             gcs.upload(self.gcs_bucket, object_name, tmp.name)
 
-        # Load to BigQuery
         schema = [bigquery.SchemaField(c, "STRING") for c in headers]
+        self.log.info("Loading data into BigQuery %s.%s", self.bq_dataset, self.bq_table)
         load_job = bq.load_table_from_uri(
             f"gs://{self.gcs_bucket}/{object_name}",
             f"{self.project_id}.{self.bq_dataset}.{self.bq_table}",
@@ -88,5 +96,5 @@ class GSheetToBQOperator(BaseOperator):
         )
         load_job.result()
 
-        # 3. Cleanup GCS object (ONLY after success)
+        # Delete file
         gcs.delete(self.gcs_bucket, object_name)

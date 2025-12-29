@@ -59,6 +59,7 @@ def create_dag(config: dict) -> DAG:
             {
                 "project_id": config["project_id"],
                 "source_table": config["bq_tables"]["tmp"],
+                "field_delimiter": config["dag_params"]["field_delimiter"]
             },
             config["bq_tables"]["src"],
             "WRITE_TRUNCATE",
@@ -69,6 +70,7 @@ def create_dag(config: dict) -> DAG:
             {
                 "project_id": config["project_id"],
                 "source_table": config["bq_tables"]["tmp"],
+                "field_delimiter": config["dag_params"]["field_delimiter"]
             },
             config["bq_tables"]["rej"],
             "WRITE_APPEND",
@@ -89,6 +91,7 @@ def create_dag(config: dict) -> DAG:
             {
                 "project_id": config["project_id"],
                 "source_table": config["bq_tables"]["stg"],
+                "field_delimiter": config["dag_params"]["field_delimiter"],
                 "primary_key": config["bq_schema"]["primary_key"],
             },
             config["bq_tables"]["rej"],

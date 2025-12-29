@@ -1,6 +1,6 @@
-import argparse
 import yaml
 import gspread
+import argparse
 from pathlib import Path
 from google.oauth2.service_account import Credentials
 
@@ -53,6 +53,9 @@ def generate_yaml(project_id: str, gsheet_id: str, job_name: str):
         "project_id": project_id,
         "job_name": row["job_name"],
         "schedule": row["schedule"],
+        "dag_params": {
+            "field_delimiter": row["field_delimiter"],
+        },
         "gsheet": {
             "gsheet_id": row["gsheet_id"],
             "range": row["range"],

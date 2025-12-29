@@ -1,7 +1,7 @@
 import re
-from google.cloud import bigquery
 from collections import Counter
 from airflow.models.baseoperator import BaseOperator
+from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 
 DATE_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 INT_REGEX = re.compile(r"^\d+$")
@@ -21,12 +21,14 @@ class InferBQSchemaOperator(BaseOperator):
         project_id: str,
         tmp_table: str,
         sample_limit: int = 1000,
+        bq_conn_id="google_cloud_default",
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.project_id = project_id
         self.tmp_table = tmp_table
         self.sample_limit = sample_limit
+        self.bq_conn_id = bq_conn_id
 
     def _infer_column_type(self, values):
         counts = Counter()
@@ -50,15 +52,18 @@ class InferBQSchemaOperator(BaseOperator):
         return counts.most_common(1)[0][0] if counts else "STRING"
 
     def execute(self, context):
-        client = bigquery.Client(project=self.project_id)
+        bq = BigQueryHook(
+            gcp_conn_id=self.bq_conn_id,
+            use_legacy_sql=False,
+        ).get_client(project_id=self.project_id)
 
         query = f"""
             SELECT *
             FROM `{self.project_id}.{self.tmp_table}`
-            WHERE RAND() < 0.01
+            WHERE RAND() <= 0.5
             LIMIT {self.sample_limit}
         """
-        df = client.query(query).to_dataframe()
+        df = bq.query(query).to_dataframe()
 
         # Create metadata
         definition = list(df.columns)

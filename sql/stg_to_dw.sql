@@ -16,8 +16,8 @@ FROM (
                 {% endfor %} 
             ORDER BY job_id DESC
         ) rownum
-    FROM `{{ params.project_id }}.{{ params.source_dataset }}.{{ params.source_table }}`
-    WHERE job_id = {{ job_id_bq(data_interval_end) }}
-        AND job_date = PARSE_DATE("%Y%m%d", substr(cast({{ job_id_bq(data_interval_end) }} as string),1,8))
+    FROM `{{ params.project_id }}.{{ params.source_table }}`
+    WHERE job_id = "{{ run_id }}"
+        AND job_date = PARSE_DATE("%Y%m%d", "{{ ds_nodash }}")
 )
 WHERE rownum = 1

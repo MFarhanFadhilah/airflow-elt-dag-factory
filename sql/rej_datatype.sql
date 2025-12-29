@@ -6,7 +6,6 @@
 {% if date_columns or numeric_columns %}
 SELECT
     CONCAT(
-        "{{ params.item }}", "{{ params.field_delimiter }}",
     {% for col in definition %}
         COALESCE(CAST({{ col }} AS STRING), ""){% if not loop.last %}, "{{ params.field_delimiter }}",{% endif %}
     {% endfor %}
@@ -28,10 +27,9 @@ SELECT
     {% endif %}
     ], "{{ params.field_delimiter }}") rej_detail,
     CURRENT_DATETIME("Asia/Jakarta") load_datetime,
-    PARSE_DATE("%Y%m%d", substr(cast({{ job_id_bq(data_interval_end) }} as string),1,8)) job_date,
-    {{ job_id_bq(data_interval_end) }} job_id,
-    "Varion Google Sheets" path_filename
-FROM `{{ params.project_id }}.{{ params.source_dataset }}.{{ params.source_table }}`
+    PARSE_DATE("%Y%m%d", "{{ ds_nodash }}") job_date,
+    "{{ run_id }}" job_id,
+FROM `{{ params.project_id }}.{{ params.source_table }}`
 WHERE 
 {% if date_columns %}
 (

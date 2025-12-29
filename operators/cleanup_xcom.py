@@ -16,7 +16,7 @@ class CleanupXComOperator(BaseOperator):
     def __init__(
         self,
         *,
-        trigger_rule: str = TriggerRule.ALL_DONE,
+        trigger_rule: str = TriggerRule.ALL_SUCCESS,
         **kwargs,
     ):
         super().__init__(trigger_rule=trigger_rule, **kwargs)
