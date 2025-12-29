@@ -1,24 +1,24 @@
-project_id: demo-project
+project_id: personal-project-dev
 job_name: retail_purchase_demo
-schedule: null
+schedule: '@daily'
 
 gsheet:
-  gsheet_id: DEMO_SHEET_ID
-  range: Purchases!A1:H
+  gsheet_id: 1aQ8P_al-3uow_ZFxoP6Jz4NP1KNrn7wjlVfPNPm1J90
+  range: Purchases_2024!A1:Z
 
 gcs:
-  bucket: demo_gsheet_landing
-  folder: retail_purchase
+  bucket: demo_landing
+  folder: retail
 
-bq_tables:
+tables:
   tmp: demo_tmp.retail_purchase_tmp
   src: demo_src.retail_purchase_src
   stg: demo_stg.retail_purchase_stg
   dw: demo_dw.retail_purchase_dw
   rej: demo_rej.retail_purchase_rej
 
-bq_schema:
+schema:
   primary_key:
-    - po_number
-    - transaction_date
-    - branch_id
+  - po_number
+  - branch_id
+  - transaction_date
