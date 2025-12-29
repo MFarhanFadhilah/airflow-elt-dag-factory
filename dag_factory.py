@@ -9,7 +9,7 @@ from personal_project.airflow_elt_dag_factory.operators.gsheet_to_bq import GShe
 from personal_project.airflow_elt_dag_factory.operators.infer_schema import InferBQSchemaOperator
 from personal_project.airflow_elt_dag_factory.operators.cleanup_xcom import CleanupXComOperator
 
-CONFIG_DIR = Path("/opt/airflow/configs")
+CONFIG_DIR = Path(__file__).resolve().parent / "dag_config"
 
 def create_dag(config: dict) -> DAG:
     def bq_insert_task(task_id, params, destination, write_disposition):
@@ -45,23 +45,23 @@ def create_dag(config: dict) -> DAG:
             range=config["gsheet"]["range"],
             gcs_bucket=config["gcs"]["bucket"],
             gcs_folder=config["gcs"]["folder"],
-            bq_dataset=config["tables"]["tmp"].split(".")[0],
-            bq_table=config["tables"]["tmp"].split(".")[1],
+            bq_dataset=config["bq_tables"]["tmp"].split(".")[0],
+            bq_table=config["bq_tables"]["tmp"].split(".")[1],
         )
 
         infer_schema = InferBQSchemaOperator(
             task_id="infer_schema",
             project_id=config["project_id"],
-            tmp_table=config["tables"]["tmp"],
+            tmp_table=config["bq_tables"]["tmp"],
         )
 
         ext_to_src = bq_insert_task(
             "ext_to_src",
             {
                 "project_id": config["project_id"],
-                "source_table": config["tables"]["tmp"],
+                "source_table": config["bq_tables"]["tmp"],
             },
-            config["tables"]["src"],
+            config["bq_tables"]["src"],
             "WRITE_TRUNCATE",
         )
 
@@ -69,9 +69,9 @@ def create_dag(config: dict) -> DAG:
             "rej_datatype",
             {
                 "project_id": config["project_id"],
-                "source_table": config["tables"]["tmp"],
+                "source_table": config["bq_tables"]["tmp"],
             },
-            config["tables"]["rej"],
+            config["bq_tables"]["rej"],
             "WRITE_APPEND",
         )
 
@@ -79,9 +79,9 @@ def create_dag(config: dict) -> DAG:
             "src_to_stg",
             {
                 "project_id": config["project_id"],
-                "source_table": config["tables"]["src"],
+                "source_table": config["bq_tables"]["src"],
             },
-            config["tables"]["stg"],
+            config["bq_tables"]["stg"],
             "WRITE_TRUNCATE",
         )
 
@@ -89,10 +89,10 @@ def create_dag(config: dict) -> DAG:
             "rej_duplicate",
             {
                 "project_id": config["project_id"],
-                "source_table": config["tables"]["stg"],
+                "source_table": config["bq_tables"]["stg"],
                 "primary_key": config["bq_schema"]["primary_key"],
             },
-            config["tables"]["rej"],
+            config["bq_tables"]["rej"],
             "WRITE_APPEND",
         )
 
@@ -100,10 +100,10 @@ def create_dag(config: dict) -> DAG:
             "stg_to_dw",
             {
                 "project_id": config["project_id"],
-                "source_table": config["tables"]["stg"],
+                "source_table": config["bq_tables"]["stg"],
                 "primary_key": config["bq_schema"]["primary_key"],
             },
-            config["tables"]["dw"],
+            config["bq_tables"]["dw"],
             "WRITE_TRUNCATE",
         )
 

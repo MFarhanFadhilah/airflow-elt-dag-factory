@@ -61,14 +61,14 @@ def generate_yaml(project_id: str, gsheet_id: str, job_name: str):
             "bucket": row["gcs_bucket"],
             "folder": row["gcs_folder"],
         },
-        "tables": {
+        "bq_tables": {
             "tmp": row["tmp_table"],
             "src": row["src_table"],
             "stg": row["stg_table"],
             "dw": row["dw_table"],
             "rej": row["rej_table"],
         },
-        "schema": {
+        "bq_schema": {
             "primary_key": parse_csv(row.get("primary_keys")),
         },
     }
