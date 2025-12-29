@@ -5,9 +5,9 @@ from datetime import datetime
 from airflow import DAG
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 
-from operator.gsheet_to_bq import GSheetToBQOperator
-from operator.infer_schema import InferBQSchemaOperator
-from operator.cleanup_xcom import CleanupXComOperator
+from personal_project.airflow_elt_dag_factory.operators.gsheet_to_bq import GSheetToBQOperator
+from personal_project.airflow_elt_dag_factory.operators.infer_schema import InferBQSchemaOperator
+from personal_project.airflow_elt_dag_factory.operators.cleanup_xcom import CleanupXComOperator
 
 CONFIG_DIR = Path("/opt/airflow/configs")
 
